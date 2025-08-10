@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pesan Anonim — Kirim</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+
+    
+  :root{
+    --accent:#4facfe; --bg:#f0f4f8; --card:#ffffff; --text:#0b1220; --muted:#6b7280;
+  }
+  [data-theme="dark"]{
+    --accent:#7c3aed; --bg:#0b1220; --card:#0f1724; --text:#e6eef8; --muted:#9aa4b2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(135deg,var(--accent),#00f2fe);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--text)}
+  .app{width:100%;max-width:420px;background:var(--card);border-radius:14px;padding:18px;box-shadow:0 12px 40px rgba(2,6,23,0.18)}
+  header{display:flex;align-items:center;justify-content:space-between}
+  h1{margin:0;font-size:18px}
+  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  label{font-size:13px;color:var(--muted);display:block;margin-top:12px}
+  input, textarea{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text);font-size:14px}
+  textarea{min-height:110px;resize:vertical}
+  .row{display:flex;gap:8px;margin-top:12px}
+  .btn{flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:white}
+  .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--text);font-weight:600}
+  .hint{font-size:13px;color:var(--muted);margin-top:8px}
+  .qrbox{display:flex;align-items:center;gap:12px;margin-top:12px}
+  .qr{width:84px;height:84px;background:#fff;padding:8px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+  .controls{display:flex;gap:8px;align-items:center}
+  /* switch */
+  .switch{position:relative;width:48px;height:28px;background:linear-gradient(180deg,#ddd,#ccc);border-radius:20px;cursor:pointer;display:inline-block}
+  .switch input{display:none}
+  .switch .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:all .22s}
+  .switch.on{background:linear-gradient(90deg,var(--accent),#00c6ff)}
+  .switch.on .knob{left:23px}
+  .switch-label{font-size:13px;color:var(--muted);margin-left:8px}
+  .status{font-size:13px;margin-top:8px}
+  .success{color:green;display:none;margin-top:8px}
+  .error{color:#ff6b6b;display:none;margin-top:8px}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
+
+  
+</style>
+
+<!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
+<meta property="og:title" content="Pesan Anonim — Kirim & Terima Pesan Tanpa Nama">
+<meta property="og:description" content="💌 Kirim pesan anonim — bebas bercerita, tanpa khawatir identitas.">
+<meta property="og:image" content="https://i.imgur.com/aQj6lj4.png">
+<meta property="og:url" content="https://namadomain.com/">
+<meta property="og:type" content="website">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pesan Anonim — Kirim & Terima Pesan Tanpa Nama">
+<meta name="twitter:description" content="💌 Kirim pesan anonim — bebas bercerita, tanpa khawatir identitas.">
+<meta name="twitter:image" content="https://i.imgur.com/aQj6lj4.png">
+
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div>
+        <h1>💌 Kirim Pesan Anonim mu</h1>
+        <div class="meta">Kirim pesan anonimmu ke aku — soalnya admin sedang Gabut</div>
+      </div>
+      <div class="controls" style="flex-direction:column;align-items:flex-end">
+        <div style="display:flex;align-items:center">
+          <div id="themeSwitch" class="switch" title="Ganti Tema"><div class="knob"></div></div>
+          <div class="switch-label">Tema</div>
+        </div>
+        <div style="display:flex;align-items:center;margin-top:8px">
+          <div id="soundSwitch" class="switch on" title="Suara Kirim"><div class="knob"></div></div>
+          <div class="switch-label">Suara</div>
+        </div>
+      </div>
+    </header>
+
+    <label>Nama </label>
+    <input id="name" placeholder="Boleh kosong — tampil 'Anonim'"/>
+
+    <label>Pesan</label>
+    <textarea id="message" placeholder="Tulis pesan... (maks ~2000 karakter)"></textarea>
+
+    <div class="row">
+      <button class="btn" id="sendBtn">Kirim</button>
+      <button class="btn ghost" id="clearBtn">Bersihkan</button>
+    </div>
+
+    <div class="hint">Bagikan halaman ini dengan QR atau link cepat.</div>
+    <div class="qrbox">
+      <div class="qr" id="qrcode"></div>
+      <div style="flex:1">
+        <button class="btn ghost" id="copyLink">Salin Link</button>
+        <div class="status" id="linkStatus">Link siap dibagikan</div>
+      </div>
+    </div>
+
+    <p class="success" id="successMsg">✔ Pesan terkirim!</p>
+    <p class="error" id="errorMsg"></p>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, push, ref } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // --- firebase config (pakai milikmu)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpCvOA1wuEKvqHduDIr7cjpejY9FHd99Q",
+    authDomain: "anonimm-b572d.firebaseapp.com",
+    databaseURL: "https://anonimm-b572d-default-rtdb.firebaseio.com",
+    projectId: "anonimm-b572d",
+    storageBucket: "anonimm-b572d.firebasestorage.app",
+    messagingSenderId: "426776066329",
+    appId: "1:426776066329:web:f3ba27d099182b2f2fed88"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // elements
+  const nameEl = document.getElementById('name');
+  const msgEl = document.getElementById('message');
+  const sendBtn = document.getElementById('sendBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const successMsg = document.getElementById('successMsg');
+  const errorMsg = document.getElementById('errorMsg');
+  const qrcodeEl = document.getElementById('qrcode');
+  const copyLinkBtn = document.getElementById('copyLink');
+  const linkStatus = document.getElementById('linkStatus');
+
+  // switches
+  const themeSwitch = document.getElementById('themeSwitch');
+  const soundSwitch = document.getElementById('soundSwitch');
+
+  // init theme from localStorage
+  const initTheme = localStorage.getItem('anon_theme') || 'light';
+  setTheme(initTheme);
+
+  function setTheme(t){
+    document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    if (t === 'dark') themeSwitch.classList.add('on'); else themeSwitch.classList.remove('on');
+    localStorage.setItem('anon_theme', t);
+  }
+  themeSwitch.addEventListener('click', ()=> {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    setTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  // sound switch
+  let soundOn = localStorage.getItem('anon_sound') !== 'off';
+  if (soundOn) soundSwitch.classList.add('on'); else soundSwitch.classList.remove('on');
+  soundSwitch.addEventListener('click', ()=> {
+    soundOn = !soundOn;
+    if (soundOn) soundSwitch.classList.add('on'); else soundSwitch.classList.remove('on');
+    localStorage.setItem('anon_sound', soundOn ? 'on' : 'off');
+  });
+
+  // small beep via WebAudio (no external file)
+  function beep(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = 880;
+      g.gain.value = 0.06;
+      o.connect(g); g.connect(ctx.destination);
+      o.start();
+      setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+    }catch(e){}
+  }
+
+  // load QR library
+  function loadScript(src){ return new Promise((res,rej)=> { const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+  await loadScript('https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js');
+  new QRCode(qrcodeEl, { text: location.href.split('#')[0], width: 80, height: 80 });
+
+  copyLinkBtn.addEventListener('click', async ()=> {
+    try{ await navigator.clipboard.writeText(location.href.split('#')[0]); copyLinkBtn.textContent = 'Tersalin!'; setTimeout(()=> copyLinkBtn.textContent='Salin Link',1400); }
+    catch(e){ linkStatus.textContent = 'Gagal salin.'; }
+  });
+
+  // basic profanity list
+  const banned = ["anjing","babi","kontol","memek","asu","tolol","bangsat","anj"];
+  function censor(text){
+    const re = new RegExp('\\b(' + banned.join('|') + ')\\b', 'ig');
+    return text.replace(re, m => '*'.repeat(m.length));
+  }
+
+  // confetti
+  await loadScript('https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js');
+
+  function validateMessage(t){ return t && t.trim().length>0 && t.trim().length<=2000; }
+
+  sendBtn.addEventListener('click', async ()=>{
+    errorMsg.style.display='none'; successMsg.style.display='none';
+    const name = nameEl.value.trim() || 'Anonim';
+    const content = msgEl.value;
+    if (!validateMessage(content)){ errorMsg.textContent='Pesan kosong atau terlalu panjang.'; errorMsg.style.display='block'; return; }
+
+    const payload = {
+      nama: name,
+      isi: censor(content),
+      waktu: new Date().toISOString()
+    };
+
+    sendBtn.disabled = true;
+    try{
+      await push(ref(db, 'pesan'), payload);
+      successMsg.style.display='block';
+      msgEl.value=''; nameEl.value='';
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+      if (soundOn) beep();
+      setTimeout(()=> successMsg.style.display='none',2000);
+    }catch(err){
+      errorMsg.textContent = 'Gagal kirim: ' + err; errorMsg.style.display='block';
+    }finally{ sendBtn.disabled = false; }
+  });
+
+  clearBtn.addEventListener('click', ()=>{ nameEl.value=''; msgEl.value=''; });
+
+  // ask notification permission (friendly)
+  if (Notification && Notification.permission === 'default') {
+    try{ await Notification.requestPermission(); }catch(e){}
+  }
+
+  
+</script>
+
+</body>
+</html>

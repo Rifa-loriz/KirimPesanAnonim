@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin — Pesan Anonim</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+    :root{
+      --accent:#7c3aed; --bg:#f3f6fb; --card:#fff; --text:#0b1220; --muted:#596273;
+    }
+    [data-theme="dark"]{
+      --accent:#7c3aed; --bg:#0b1220; --card:#0f1724; --text:#e6eef8; --muted:#9aa4b2;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text);padding:18px;}
+    .wrap{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    h1{margin:0;font-size:20px}
+    .meta{font-size:13px;color:var(--muted)}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-start}
+    .search{padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);min-width:240px;flex:1}
+    .card{background:var(--card);padding:14px;border-radius:12px;margin-top:12px;box-shadow:0 10px 30px rgba(2,6,23,0.08)}
+    .stats{display:flex;gap:10px;flex-wrap:wrap}
+    .stat{padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);min-width:140px;flex:1}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    button{padding:9px 12px;border-radius:10px;border:none;background:var(--accent);color:white;cursor:pointer;font-weight:700;white-space:nowrap}
+    button.alt{background:transparent;color:var(--text);border:1px solid rgba(0,0,0,0.06)}
+    .messages{margin-top:12px}
+    .message{padding:12px;border-radius:10px;margin-bottom:10px;background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent)}
+    .meta-small{font-size:12px;color:var(--muted)}
+    /* switch styling */
+    .switch{position:relative;width:48px;height:28px;border-radius:20px;background:#e6e6e6;cursor:pointer;display:inline-block}
+    .switch .knob{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:white;transition:all .22s}
+    .switch.on{background:linear-gradient(90deg,var(--accent),#00c6ff)}
+    .switch.on .knob{left:23px}
+    .small{font-size:13px;color:var(--muted)}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  
+    /* ========================= */
+    /*   RESPONSIVE SETTINGS     */
+    /* ========================= */
+    @media (max-width: 768px) {
+      h1 { font-size: 18px; }
+      .search { min-width: 100%; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .stats { flex-direction: column; }
+      .stat { min-width: 100%; }
+      header { flex-direction: column; align-items: flex-start; }
+      .actions { flex-direction: column; align-items: stretch; }
+      button, button.alt { width: 100%; }
+    }
+  
+    @media (max-width: 480px) {
+      body { padding: 10px; }
+      h1 { font-size: 16px; }
+      .search { font-size: 14px; }
+      button { font-size: 14px; padding: 8px; }
+      .stat div:first-child { font-size: 16px; }
+    }
+  </style>
+  
+</head>
+<body data-theme="light">
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>📥 Admin — Pesan Anonim</h1>
+        <div class="meta">Halaman admin. Jaga URL ini tetap privat.</div>
+      </div>
+
+      <div class="controls">
+        <input class="search" id="searchInput" placeholder="Cari nama atau isi..." />
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div id="themeSwitch" class="switch"></div>
+            <div class="small">Tema</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div id="soundSwitch" class="switch on"></div>
+            <div class="small">Suara</div>
+          </div>
+        </div>
+        <button id="downloadBtn">Unduh pesan</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div style="font-size:18px" id="totalCount">0</div><div class="meta-small">Total Pesan</div></div>
+        <div class="stat"><div style="font-size:18px" id="todayCount">0</div><div class="meta-small">Hari Ini</div></div>
+        <div class="stat"><div style="font-size:18px" id="topWord">-</div><div class="meta-small">Kata Teratas</div></div>
+      </div>
+
+      <div style="margin-top:12px" class="row actions">
+        <button id="clearAll" class="alt">Hapus Semua</button>
+        <div style="flex:1"></div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+    </div>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getDatabase, ref, onChildAdded, onValue, get, remove
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpCvOA1wuEKvqHduDIr7cjpejY9FHd99Q",
+    authDomain: "anonimm-b572d.firebaseapp.com",
+    databaseURL: "https://anonimm-b572d-default-rtdb.firebaseio.com",
+    projectId: "anonimm-b572d",
+    storageBucket: "anonimm-b572d.firebasestorage.app",
+    messagingSenderId: "426776066329",
+    appId: "1:426776066329:web:f3ba27d099182b2f2fed88"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const messagesRef = ref(db, 'pesan');
+
+  // elements
+  const messagesEl = document.getElementById('messages');
+  const totalCountEl = document.getElementById('totalCount');
+  const todayCountEl = document.getElementById('todayCount');
+  const topWordEl = document.getElementById('topWord');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const searchInput = document.getElementById('searchInput');
+  const themeSwitch = document.getElementById('themeSwitch');
+  const soundSwitch = document.getElementById('soundSwitch');
+  const clearAllBtn = document.getElementById('clearAll');
+
+  // local
+  let allMessages = [];
+  let soundEnabled = true;
+
+  // theme init
+  const saved = localStorage.getItem('admin_theme') || 'light';
+  setTheme(saved);
+  function setTheme(t){
+    document.body.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    if (t === 'dark') themeSwitch.classList.add('on'); else themeSwitch.classList.remove('on');
+    localStorage.setItem('admin_theme', t);
+  }
+  themeSwitch.addEventListener('click', ()=> {
+    const cur = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    setTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  // sound switch init
+  soundEnabled = localStorage.getItem('admin_sound') !== 'off';
+  if (soundEnabled) soundSwitch.classList.add('on'); else soundSwitch.classList.remove('on');
+  soundSwitch.addEventListener('click', ()=>{
+    soundEnabled = !soundEnabled;
+    if (soundEnabled) soundSwitch.classList.add('on'); else soundSwitch.classList.remove('on');
+    localStorage.setItem('admin_sound', soundEnabled ? 'on' : 'off');
+  });
+
+  // request notification permission
+  if (Notification && Notification.permission === 'default') {
+    Notification.requestPermission().catch(()=>{});
+  }
+
+  // small beep (webaudio)
+  function beep(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type='sine'; o.frequency.value=880; g.gain.value=0.06;
+      o.connect(g); g.connect(ctx.destination); o.start();
+      setTimeout(()=>{ o.stop(); ctx.close(); },120);
+    }catch(e){}
+  }
+
+  // render single message
+  function renderMessage(m){
+    const el = document.createElement('div'); el.className='message'; el.dataset.key = m.key;
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div style="font-weight:700">${escapeHtml(m.nama||'Anonim')}</div>
+          <div class="meta-small">${formatTime(m.waktu)}</div>
+        </div>
+        <div style="text-align:right">
+          <button class="alt" data-key="${m.key}" onclick="copyMsg('${m.key}')">Copy</button>
+          <button data-key="${m.key}" onclick="deleteMsg('${m.key}')">Hapus</button>
+        </div>
+      </div>
+      <div style="margin-top:8px;white-space:pre-wrap">${escapeHtml(m.isi)}</div>
+    `;
+    return el;
+  }
+
+  // escape
+  function escapeHtml(s){ if (!s && s !== 0) return ''; return s.toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+  function formatTime(t){ try{ return new Date(t).toLocaleString(); }catch(e){ return t; } }
+
+  // realtime: child added
+  onChildAdded(messagesRef, (snap) => {
+    const key = snap.key; const data = snap.val();
+    const m = { key, nama: data.nama, isi: data.isi, waktu: data.waktu };
+    allMessages.unshift(m);
+    messagesEl.prepend(renderMessage(m));
+    // notify
+    if (Notification && Notification.permission === 'granted'){
+      const n = new Notification('Pesan Baru', { body: `${m.nama || 'Anonim'} — ${truncate(m.isi,60)}` });
+      setTimeout(()=> n.close(), 6000);
+    }
+    if (soundEnabled) beep();
+    computeStats();
+  });
+
+  // onValue sync for full dataset (for stats + search)
+  onValue(messagesRef, (snap) => {
+    const val = snap.val();
+    allMessages = [];
+    if (val){
+      Object.entries(val).forEach(([k,v]) => allMessages.push({ key:k, nama:v.nama, isi:v.isi, waktu:v.waktu }));
+      allMessages.sort((a,b) => new Date(b.waktu) - new Date(a.waktu));
+    }
+    renderList();
+    computeStats();
+  });
+
+  function renderList(){
+    const q = (searchInput.value || '').trim().toLowerCase();
+    messagesEl.innerHTML = '';
+    const filtered = allMessages.filter(m => {
+      if (!q) return true;
+      return (m.nama||'').toLowerCase().includes(q) || (m.isi||'').toLowerCase().includes(q);
+    });
+    filtered.forEach(m => messagesEl.appendChild(renderMessage(m)));
+  }
+  searchInput.addEventListener('input', renderList);
+
+  function computeStats(){
+    totalCountEl.textContent = allMessages.length;
+    const today = new Date().toISOString().slice(0,10);
+    todayCountEl.textContent = allMessages.filter(m => (m.waktu||'').slice(0,10) === today).length;
+    // top word
+    const stop = new Set(['dan','yang','di','ke','ini','itu','untuk','dengan','adalah','saya','kamu']);
+    const freq = {};
+    allMessages.forEach(m => {
+      (m.isi||'').toLowerCase().split(/[^a-z0-9]+/).forEach(w => {
+        if (!w || w.length<=2) return; if (stop.has(w)) return;
+        freq[w] = (freq[w]||0)+1;
+      });
+    });
+    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+    topWordEl.textContent = top ? `${top[0]} (${top[1]})` : '-';
+  }
+
+  // download .txt
+  downloadBtn.addEventListener('click', async ()=>{
+    const snap = await get(messagesRef);
+    const data = snap.exists() ? snap.val() : null;
+    if (!data){ alert('Tidak ada pesan.'); return; }
+    let text = '=== Pesan Anonim ===\n\n';
+    Object.values(data).forEach(m => { text += `[${m.nama||'Anonim'}] (${m.waktu}):\n${m.isi}\n\n`; });
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pesan_anonim.txt'; a.click();
+  });
+
+  // delete single message
+  window.deleteMsg = async function(key){
+    if (!confirm('Hapus pesan ini?')) return;
+    await remove(ref(db, `pesan/${key}`)).then(()=>{}).catch(()=> alert('Gagal hapus'));
+  };
+
+  // copy
+  window.copyMsg = function(key){
+    const m = allMessages.find(x=>x.key===key); if (!m) return;
+    navigator.clipboard.writeText(`${m.nama||'Anonim'}: ${m.isi}`).then(()=> alert('Tersalin ke clipboard.'));
+  };
+
+  // clear all
+  clearAllBtn.addEventListener('click', async ()=>{
+    if (!confirm('Hapus SEMUA pesan? Tindakan tidak bisa dibatalkan.')) return;
+    await remove(ref(db, 'pesan')).then(()=> alert('Semua pesan dihapus')).catch(()=> alert('Gagal menghapus semua.'));
+  });
+
+  function truncate(s,n){ if (!s) return ''; return s.length>n ? s.slice(0,n-1)+'…' : s; }
+</script>
+</body>
+</html>
